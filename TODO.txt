@@ -1,0 +1,3 @@
+items to consider still:
+
+- file type filter
