@@ -1,4 +1,5 @@
 import unittest
+import os
 from LineCounting import LineCounting
 
 WRITE = "w"
@@ -6,12 +7,13 @@ WRITE = "w"
 class TestLineCounting(unittest.TestCase):
 
     def setUp(self):
+        self.file = "TestFile.cpp"
         self.files = []
         self.f = None
 
     def tearDown(self):
         for file in self.files:
-            self.writeEmptyFile(file)
+            os.remove(file)
 
 #Tests
     def testEmptyFile(self):
@@ -145,8 +147,10 @@ class TestLineCounting(unittest.TestCase):
         assert 2 == self.counter.totalCommentLines()
 
     def testDirectoryWithEmptyFile(self):
-        self.setUpEmptyDir()
+        self.setUpDir()
 
+        self.writeEmptyFile(self.fileAndDir)
+        
         self.counter.countLines()
 
         assert 0 == self.counter.totalLinesOfCode()
@@ -154,9 +158,9 @@ class TestLineCounting(unittest.TestCase):
         assert 1 == self.counter.totalFiles()
 
     def testDirectoryWithOneFileAndOneComment(self):
-        fileAndDir = self.setUpEmptyDir()
+        self.setUpDir()
 
-        self.f = open(fileAndDir, "w")
+        self.f = open(self.fileAndDir, WRITE)
         self.f.write("// This is a comment")
         self.f.close()
 
@@ -165,30 +169,65 @@ class TestLineCounting(unittest.TestCase):
         assert 0 == self.counter.totalLinesOfCode()
         assert 1 == self.counter.totalCommentLines()
         assert 1 == self.counter.totalFiles()
+        
+    def testDirectoryWithFilter(self):
+        self.setUpDir()
+
+        self.f = open(self.fileAndDir, WRITE)
+        self.f.write("// This is a comment")
+        self.f.close()
+        
+        self.writeEmptyFile("%s/TestFile.txt" % (self.dir))
+        self.files.append("%s/TestFile.txt" % (self.dir))
+
+        self.counter.countLines()
+
+        assert 0 == self.counter.totalLinesOfCode()
+        assert 1 == self.counter.totalCommentLines()
+        assert 1 == self.counter.totalFiles() 
+        
+    def testDirectoryWithMultipleFilters(self):
+        self.setUpDir()
+
+        self.f = open(self.fileAndDir, WRITE)
+        self.f.write("// This is a comment")
+        self.f.close()
+        
+        self.f = open("%s/%s" % (self.dir, "TestFile.h"), WRITE)
+        self.f.write("int x = 0;")
+        self.f.close()
+        self.files.append("%s/TestFile.h" % (self.dir))
+        
+        self.writeEmptyFile("%s/TestFile.txt" % (self.dir))
+        self.files.append("%s/TestFile.txt" % (self.dir))
+
+        self.counter.countLines()
+
+        assert 1 == self.counter.totalLinesOfCode()
+        assert 1 == self.counter.totalCommentLines()
+        assert 2 == self.counter.totalFiles() 
 
 #private methods
     def writeEmptyFile(self, file):
         if self.f is not None:
             self.f.close()
-            self.f = open(file, WRITE)
-            self.f.write("")
-            self.f.close()
+        self.f = open(file, WRITE)
+        self.f.write("")
+        self.f.close()
 
     def setUpFile(self):
-        self.file = "TestFile.cpp"
         self.files.append(self.file)
 
         self.counter = LineCounting(self.file)
-        self.f = open(self.file, "w")
+        self.f = open(self.file, WRITE)
 
-    def setUpEmptyDir(self):
-        self.file = "TestFile.cpp"
+    def setUpDir(self):
+        self.file = "Testing.cpp"
         self.dir = "TestDirectory"
-        fileAndDir = "%s/%s" % (self.dir, self.file)
-        self.files.append(fileAndDir)
-        
-        self.counter = LineCounting(fileAndDir)
-        return fileAndDir
+        self.fileAndDir = "%s/%s" % (self.dir, self.file)
+        self.files.append(self.fileAndDir)
+
+        self.counter = LineCounting(self.dir, [".cpp",".h"])
 
         
 #Main entry for application
